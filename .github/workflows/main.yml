@@ -45,6 +45,12 @@ jobs:
        echo "FRONTEND_IMAGE=gcr.io/${{ secrets.GCP_PROJECT_ID }}/frontend-app" >> $GITHUB_ENV
        echo "MYSQL_IMAGE=gcr.io/${{ secrets.GCP_PROJECT_ID }}/mysql:8" >> $GITHUB_ENV
 
+    - name: Pull tag and pushofficial MySQL image
+      run: |
+        docker pull mysql:8
+        docker tag mysql:8 gcr.io/${{ secrets.GCP_PROJECT_ID }}/mysql:8
+        docker push gcr.io/${{ secrets.GCP_PROJECT_ID }}/mysql:8
+        
     - name: Build Backend Docker Image
       run: docker build -t $BACKEND_IMAGE ./backend
 
@@ -57,14 +63,8 @@ jobs:
     - name: Push Frontend Image to GCR
       run: docker push $FRONTEND_IMAGE
 
-    - name: Pull official MySQL image
-      run: docker pull mysql:8
-      
-    - name: Tag MySQL image to GCR
-      run: docker tag mysql:8 $MYSQL_IMAGE
+    
 
-    - name: Push Backend Image to GCR
-      run: docker push $MYSQL_IMAGE
 
  
 
