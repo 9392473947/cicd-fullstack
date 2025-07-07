@@ -1,230 +1,333 @@
-name: cicd-ec2
- 
+name: Build and push docker image to GCR
+
 on:
-  push: 
-    paths:
-      - 'trigger'
-# env: 
-#   ECR_REPO_frontend: ${{ secrets.ECR_REPO_frontend }}  
-#   ECR_REPO_backend: ${{ secrets.ECR_REPO_backend }}
-#   IMAGE_TAG: latest
-  # ECR_password: ${{ secrets.ECR_password }} 
-# permissions:
-#       id-token: write   
-#       contents: read 
+ push:
+  branches:
+   - main
+
 jobs:
-  build_image_deploy:
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout source code
-        uses: actions/checkout@v3
-      # - name: Configure AWS credentials using OIDC
-      #   uses: aws-actions/configure-aws-credentials@v2
-      #   with:
-      #    role-to-assume: arn:aws:iam::364700382033:role/admin-role
-      #    aws-region: ${{ secrets.AWS_REGION }}
-      - name: azure account login
-        uses: azure/login@v2
-        with:
-         creds: ${{ secrets.AZURE_CREDENTIALS }}
-         allow-no-subscriptions: true
+ build-and-push:
+  name: Build,push, and Test with with MySQL
+  runs-on: ubuntu-latest
 
-         # allow-no-subscriptions: true
-      # - name: configure azure credentials
-      #   uses: azure/login@v1
-      #   with:
-      #    client-id: ${{ secrets.AZURE_CLIENT_ID }}
-      #    tenant-id: ${{ secrets.AZURE_TENANT_ID }}
-      #    subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
-      #    client-secret: ${{ secrets.AZURE_CLIENT_SECRET }}
-      - name: Azure ACR Login
-        run: |
-         az acr login --name ${{ secrets.ACR_NAME }}
-      # az acr login --name ${{ secrets.ACR_FRONTEND_NAME }}
-      # - name: getting the commid id as tag 
-      #   run: |
-      #      echo "COMMIT_ID=$(git rev-parse --short=6 HEAD)" >> $GITHUB_ENV  
-      # - name: Login to Amazon ECR
-      #   uses: aws-actions/amazon-ecr-login@v1
+  services:
+   mysql:
+    image: mysql:8
+    env:
+     MYSQL_ROOT_PASSWORD: rootpassword
+     MYSQL_DATABASE: cruddb
+     MYSQL_USER: admin
+     MYSQL_PASSWORD: admin
+    ports:
+     - 3306:3306
+    options: >-
+     --health-cmd="mysqladmin ping --silent"
+     --health-interval=10s
+     --health-timeout=5s
+     --health-retries=5
 
-      # - name: Login to Amazon ECR
-      #   run: docker version
-        
-      # - name: Install Trivy
-      #   run: |
-      #      sudo apt update -y
-      #      wget https://github.com/aquasecurity/trivy/releases/download/v0.62.0/trivy_0.62.0_Linux-64bit.deb || true
-      #      sudo dpkg -i trivy_0.62.0_Linux-64bit.deb || true
+  steps:
+    - name: Checkout code
+      uses: actions/checkout@v3
+
+    - name: Authenticate to GCP
+      uses: google-github-actions/auth@v1
+      with:
+       credentials_json: '${{ secrets.GCP_SA_KEY }}'
+
+    - name: Configure Docker to use GCR
+      run: |
+       gcloud --quiet auth configure-docker
+
+    - name: Set environment variables
+      run: |
+       echo "GCP_PROJECT_ID=${{ secrets.GCP_PROJECT_ID }}" >> $GITHUB_ENV
+       echo "BACKEND_IMAGE=gcr.io/${{ secrets.GCP_PROJECT_ID }}/backend-app" >> $GITHUB_ENV
+       echo "FRONTEND_IMAGE=gcr.io/${{ secrets.GCP_PROJECT_ID }}/frontend-app" >> $GITHUB_ENV
+       echo "MYSQL_IMAGE=gcr.io/${{ secrets.GCP_PROJECT_ID }}/mysql:8" >> $GITHUB_ENV
+
+    - name: Build Backend Docker Image
+      run: docker build -t $BACKEND_IMAGE ./backend
+
+    - name: Push Backend Image to GCR
+      run: docker push $BACKEND_IMAGE
+
+    - name: Build Frontend Docker Image
+      run: docker build -t $FRONTEND_IMAGE ./frontend
+
+    - name: Push Frontend Image to GCR
+      run: docker push $FRONTEND_IMAGE
+
+    - name: Pull official MySQL image
+      run: docker pull mysql:8
       
-      # - name: Run Semgrep and output JSON
-      #   uses: returntocorp/semgrep-action@v1
-      #   with:
-      #     config: 'auto'
-      #     args: --json --output=semgrep-report.json --max-target-bytes 5000000 --verbose
+    - name: Tag MySQL image to GCR
+      run: docker tag mysql:8 $MYSQL_IMAGE
 
-      # - name: Run Semgrep scan
-      #   uses: semgrep/semgrep-action@v1
-      #   with:
-      #     config: 'auto'  # Or specify a custom config
-      #     args: '--max-target-bytes=5000000'
+    - name: Push Backend Image to GCR
+      run: docker push $MYSQL_IMAGE
 
-      # - name: Upload Semgrep report as artifact
-      #   uses: actions/upload-artifact@v4
-      #   with:
-      #     name: semgrep-application-vulnerability-report
-      #     path: semgrep-report.json
+ 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+# name: cicd-ec2
+ 
+# on:
+#   push: 
+#     paths:
+#       - 'trigger'
+# # env: 
+# #   ECR_REPO_frontend: ${{ secrets.ECR_REPO_frontend }}  
+# #   ECR_REPO_backend: ${{ secrets.ECR_REPO_backend }}
+# #   IMAGE_TAG: latest
+#   # ECR_password: ${{ secrets.ECR_password }} 
+# # permissions:
+# #       id-token: write   
+# #       contents: read 
+# jobs:
+#   build_image_deploy:
+#     runs-on: ubuntu-latest
+#     steps:
+#       - name: Checkout source code
+#         uses: actions/checkout@v3
+#       # - name: Configure AWS credentials using OIDC
+#       #   uses: aws-actions/configure-aws-credentials@v2
+#       #   with:
+#       #    role-to-assume: arn:aws:iam::364700382033:role/admin-role
+#       #    aws-region: ${{ secrets.AWS_REGION }}
+#       - name: azure account login
+#         uses: azure/login@v2
+#         with:
+#          creds: ${{ secrets.AZURE_CREDENTIALS }}
+#          allow-no-subscriptions: true
+
+#          # allow-no-subscriptions: true
+#       # - name: configure azure credentials
+#       #   uses: azure/login@v1
+#       #   with:
+#       #    client-id: ${{ secrets.AZURE_CLIENT_ID }}
+#       #    tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+#       #    subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+#       #    client-secret: ${{ secrets.AZURE_CLIENT_SECRET }}
+#       - name: Azure ACR Login
+#         run: |
+#          az acr login --name ${{ secrets.ACR_NAME }}
+#       # az acr login --name ${{ secrets.ACR_FRONTEND_NAME }}
+#       # - name: getting the commid id as tag 
+#       #   run: |
+#       #      echo "COMMIT_ID=$(git rev-parse --short=6 HEAD)" >> $GITHUB_ENV  
+#       # - name: Login to Amazon ECR
+#       #   uses: aws-actions/amazon-ecr-login@v1
+
+#       # - name: Login to Amazon ECR
+#       #   run: docker version
+        
+#       # - name: Install Trivy
+#       #   run: |
+#       #      sudo apt update -y
+#       #      wget https://github.com/aquasecurity/trivy/releases/download/v0.62.0/trivy_0.62.0_Linux-64bit.deb || true
+#       #      sudo dpkg -i trivy_0.62.0_Linux-64bit.deb || true
+      
+#       # - name: Run Semgrep and output JSON
+#       #   uses: returntocorp/semgrep-action@v1
+#       #   with:
+#       #     config: 'auto'
+#       #     args: --json --output=semgrep-report.json --max-target-bytes 5000000 --verbose
+
+#       # - name: Run Semgrep scan
+#       #   uses: semgrep/semgrep-action@v1
+#       #   with:
+#       #     config: 'auto'  # Or specify a custom config
+#       #     args: '--max-target-bytes=5000000'
+
+#       # - name: Upload Semgrep report as artifact
+#       #   uses: actions/upload-artifact@v4
+#       #   with:
+#       #     name: semgrep-application-vulnerability-report
+#       #     path: semgrep-report.json
        
-      # - name: Set up Python
-      #   uses: actions/setup-python@v4
-      #   with:
-      #    python-version: '3.x'
+#       # - name: Set up Python
+#       #   uses: actions/setup-python@v4
+#       #   with:
+#       #    python-version: '3.x'
 
-      # - name: Install Semgrep
-      #   run: pip install semgrep
+#       # - name: Install Semgrep
+#       #   run: pip install semgrep
 
-      # - name: Run Semgrep scan
-      #   run: semgrep --config auto --json --output semgrep-raw-report.json
+#       # - name: Run Semgrep scan
+#       #   run: semgrep --config auto --json --output semgrep-raw-report.json
         
-      # - name: Format JSON report (pretty-print)
-      #   run: jq . semgrep-raw-report.json > semgrep-report.json
+#       # - name: Format JSON report (pretty-print)
+#       #   run: jq . semgrep-raw-report.json > semgrep-report.json
 
-      # - name: Upload Semgrep report as artifact
-      #   uses: actions/upload-artifact@v4
-      #   with:
-      #    name: semgrep-report
-      #    path: semgrep-report.json
+#       # - name: Upload Semgrep report as artifact
+#       #   uses: actions/upload-artifact@v4
+#       #   with:
+#       #    name: semgrep-report
+#       #    path: semgrep-report.json
       
 
-      # - name: Trivy Scan
-      #   uses: aquasecurity/trivy-action@master
-      #   with:
-      #      scan-type: 'fs'
-      #      scan-ref: '.'
-      #      format: 'table' 
-      #      output: 'trivy-fs-report.txt'
-      # - name: Upload trivy fs report
-      #   uses: actions/upload-artifact@v4
-      #   with:
-      #     name: trivy-filse-scan-report
-      #     path: trivy-fs-report.txt
-      # # - name: Install Trivy if not present
-      # #   run: |
-      # #     if ! command -v trivy &> /dev/null; then
-      # #       echo "Trivy not found. Installing..."
-      # #       sudo apt update -y
-      # #       wget https://github.com/aquasecurity/trivy/releases/download/v0.62.0/trivy_0.62.0_Linux-64bit.deb
-      # #       sudo dpkg -i trivy_0.62.0_Linux-64bit.deb
-      # #     else
-      # #       echo "Trivy is already installed."
-      # #     fi 
-      # - name: Install Snyk and scan dependencies
-      #   run: |
-      #    npm install -g snyk
-      #    # snyk test --json-file-output=snyk-report.json ./frontend || true
-      #    snyk test ./frontend > snyk-report.txt || true
-      #   env:
-      #    SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
+#       # - name: Trivy Scan
+#       #   uses: aquasecurity/trivy-action@master
+#       #   with:
+#       #      scan-type: 'fs'
+#       #      scan-ref: '.'
+#       #      format: 'table' 
+#       #      output: 'trivy-fs-report.txt'
+#       # - name: Upload trivy fs report
+#       #   uses: actions/upload-artifact@v4
+#       #   with:
+#       #     name: trivy-filse-scan-report
+#       #     path: trivy-fs-report.txt
+#       # # - name: Install Trivy if not present
+#       # #   run: |
+#       # #     if ! command -v trivy &> /dev/null; then
+#       # #       echo "Trivy not found. Installing..."
+#       # #       sudo apt update -y
+#       # #       wget https://github.com/aquasecurity/trivy/releases/download/v0.62.0/trivy_0.62.0_Linux-64bit.deb
+#       # #       sudo dpkg -i trivy_0.62.0_Linux-64bit.deb
+#       # #     else
+#       # #       echo "Trivy is already installed."
+#       # #     fi 
+#       # - name: Install Snyk and scan dependencies
+#       #   run: |
+#       #    npm install -g snyk
+#       #    # snyk test --json-file-output=snyk-report.json ./frontend || true
+#       #    snyk test ./frontend > snyk-report.txt || true
+#       #   env:
+#       #    SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
 
-      # - name: Upload Snyk JSON Report
-      #   uses: actions/upload-artifact@v4
-      #   with:
-      #    name: snyk-json-report
-      #    path: snyk-report.txt
+#       # - name: Upload Snyk JSON Report
+#       #   uses: actions/upload-artifact@v4
+#       #   with:
+#       #    name: snyk-json-report
+#       #    path: snyk-report.txt
       
-      # - name: Scan Python dependencies from requirements.txt
-      #   run: trivy fs --severity CRITICAL,HIGH . > file-vulnerabilities.txt
-      # - name: uploading file scan vulnerabilities trivy
-      #   uses: actions/upload-artifact@v4
-      #   with:
-      #    name: files vulnerabilities
-      #    path: file-vulnerabilities.txt
-      - name: Build Docker image
-        run: |
-          docker build -t backend ./backend/
-          docker build --build-arg BACKEND_URL=http://52.233.89.163/api -t frontend ./frontend/
-          # docker build --build-arg BACKEND_URL=https://xgictyxlg1.execute-api.us-east-1.amazonaws.com -t frontend ./frontend/
-      # - name: Scan backend Docker image
-      #   uses: aquasecurity/trivy-action@master
-      #   with:
-      #    scan-type: 'image'
-      #    image-ref: 'backend:latest'
-      #    format: 'table' 
-      #    output: 'backend-image-report.txt'
-      # # - name: Scan Docker backend image for vulnerabilities
-      # #   run: |
-      # #     # trivy image --severity CRITICAL,HIGH --format json --output trivy-backend-report.json backend:latest
-      # #     trivy image --severity CRITICAL,HIGH backend:latest > trivy-backend-report.txt
-      # - name: Upload backend report JSON Report
-      #   uses: actions/upload-artifact@v4
-      #   with:
-      #    name: trivy-bckend-image-report
-      #    path: backend-image-report.txt
+#       # - name: Scan Python dependencies from requirements.txt
+#       #   run: trivy fs --severity CRITICAL,HIGH . > file-vulnerabilities.txt
+#       # - name: uploading file scan vulnerabilities trivy
+#       #   uses: actions/upload-artifact@v4
+#       #   with:
+#       #    name: files vulnerabilities
+#       #    path: file-vulnerabilities.txt
+#       - name: Build Docker image
+#         run: |
+#           docker build -t backend ./backend/
+#           docker build --build-arg BACKEND_URL=http://52.233.89.163/api -t frontend ./frontend/
+#           # docker build --build-arg BACKEND_URL=https://xgictyxlg1.execute-api.us-east-1.amazonaws.com -t frontend ./frontend/
+#       # - name: Scan backend Docker image
+#       #   uses: aquasecurity/trivy-action@master
+#       #   with:
+#       #    scan-type: 'image'
+#       #    image-ref: 'backend:latest'
+#       #    format: 'table' 
+#       #    output: 'backend-image-report.txt'
+#       # # - name: Scan Docker backend image for vulnerabilities
+#       # #   run: |
+#       # #     # trivy image --severity CRITICAL,HIGH --format json --output trivy-backend-report.json backend:latest
+#       # #     trivy image --severity CRITICAL,HIGH backend:latest > trivy-backend-report.txt
+#       # - name: Upload backend report JSON Report
+#       #   uses: actions/upload-artifact@v4
+#       #   with:
+#       #    name: trivy-bckend-image-report
+#       #    path: backend-image-report.txt
         
-      # # - name: Scan Docker frontend image for vulnerabilities
-      # #   run: |
-      # #     # trivy image --severity CRITICAL,HIGH --format json --output trivy-frontend-report.json frontend:latest
-      # #     trivy image --severity CRITICAL,HIGH frontend:latest > trivy-frontend-report.txt
-      # - name: Scan frontend Docker image
-      #   uses: aquasecurity/trivy-action@master
-      #   with:
-      #    scan-type: 'image'
-      #    image-ref: 'frontend:latest'
-      #    format: 'table' 
-      #    output: 'frontend-image-report.txt'
-      # - name: frontend-report
-      #   uses: actions/upload-artifact@v4
-      #   with:
-      #    name: trivy-frontend-image-report
-      #    path: frontend-image-report.txt
+#       # # - name: Scan Docker frontend image for vulnerabilities
+#       # #   run: |
+#       # #     # trivy image --severity CRITICAL,HIGH --format json --output trivy-frontend-report.json frontend:latest
+#       # #     trivy image --severity CRITICAL,HIGH frontend:latest > trivy-frontend-report.txt
+#       # - name: Scan frontend Docker image
+#       #   uses: aquasecurity/trivy-action@master
+#       #   with:
+#       #    scan-type: 'image'
+#       #    image-ref: 'frontend:latest'
+#       #    format: 'table' 
+#       #    output: 'frontend-image-report.txt'
+#       # - name: frontend-report
+#       #   uses: actions/upload-artifact@v4
+#       #   with:
+#       #    name: trivy-frontend-image-report
+#       #    path: frontend-image-report.txt
 
-      - name: Push image to ACR
-        run: |
-          docker tag backend:latest ${{ secrets.ACR_REPO_backend }}/backend:latest
-          docker tag frontend:latest ${{ secrets.ACR_REPO_backend }}/frontend:latest
-          docker push ${{ secrets.ACR_REPO_backend }}/backend:latest
-          docker push ${{ secrets.ACR_REPO_backend }}/frontend:latest
+#       - name: Push image to ACR
+#         run: |
+#           docker tag backend:latest ${{ secrets.ACR_REPO_backend }}/backend:latest
+#           docker tag frontend:latest ${{ secrets.ACR_REPO_backend }}/frontend:latest
+#           docker push ${{ secrets.ACR_REPO_backend }}/backend:latest
+#           docker push ${{ secrets.ACR_REPO_backend }}/frontend:latest
         
-      # - name: Push image to ECR
-      #   run: |
-      #     docker tag backend:latest ${{ secrets.ECR_REPO_backend }}:latest
-      #     docker tag frontend:latest ${{ secrets.ECR_REPO_frontend }}:latest
-      #     docker push ${{ secrets.ECR_REPO_backend }}:latest
-      #     docker push ${{ secrets.ECR_REPO_frontend }}:latest
-      # - name: Deploy to EC2 instance
-      #   env:
-      #     SSH_KEY: ${{ secrets.EC2_SSH_KEY }}  
-      #     SSH_USER: ${{ secrets.SSH_USER }}    
-      #     SSH_IP: ${{ secrets.SSH_IP }}
-      #     # COMMIT_ID: ${{ env.COMMIT_ID }}
-      #   run: |
-      #     echo "$SSH_KEY" > kartik-new.pem
-      #     sudo chmod 400 kartik-new.pem
-      #     ssh -o StrictHostKeyChecking=no -i kartik-new.pem $SSH_USER@$SSH_IP << 'EOF'
-      #       sudo yum update
-      #       sudo yum upgrade -y
-      #       sudo yum install docker -y || true
-      #       sudo systemctl enable docker || true
-      #       sudo systemctl start docker || true
-      #       sudo usermod -aG docker ubuntu || true
-      #       sudo docker network create kartik-network || true
-      #       sudo docker stop backend || true
-      #       sudo docker rm backend || true
-      #       sudo docker stop frontend || true
-      #       sudo docker rm frontend || true
-      #       sudo docker rmi ${{ secrets.ECR_REPO_backend }}:latest || true
-      #       sudo docker rmi ${{ secrets.ECR_REPO_frontend }}:latest || true
-      #       # sudo docker stop mysql-container || true
-      #       # sudo docker rm mysql-container || true
-      #       sudo docker run -d --name mysql-container --network kartik-network --restart always -e MYSQL_ROOT_PASSWORD=password -e MYSQL_DATABASE=kartikdatabase  -e MYSQL_USER=kartikuser -e MYSQL_PASSWORD=password -p 3300:3306 mysql:latest || true
-      #       aws ecr get-login-password --region us-east-1 | sudo docker login --username AWS --password-stdin $ECR_PASSWORD 
-      #       sudo docker pull ${{ secrets.ECR_REPO_backend }}:latest
-      #       sudo docker pull ${{ secrets.ECR_REPO_frontend }}:latest
-      #       sudo docker run --name=backend --network kartik-network --restart always -p 5000:5000 -e DB_HOST=mysql-container -e DB_PASSWORD=password -e DB_NAME=kartikdatabase  -e DB_USER=kartikuser -d ${{ secrets.ECR_REPO_backend }}:latest
-      #       sudo docker run --name=frontend --restart always -p 3000:80 -d ${{ secrets.ECR_REPO_frontend }}:latest
+#       # - name: Push image to ECR
+#       #   run: |
+#       #     docker tag backend:latest ${{ secrets.ECR_REPO_backend }}:latest
+#       #     docker tag frontend:latest ${{ secrets.ECR_REPO_frontend }}:latest
+#       #     docker push ${{ secrets.ECR_REPO_backend }}:latest
+#       #     docker push ${{ secrets.ECR_REPO_frontend }}:latest
+#       # - name: Deploy to EC2 instance
+#       #   env:
+#       #     SSH_KEY: ${{ secrets.EC2_SSH_KEY }}  
+#       #     SSH_USER: ${{ secrets.SSH_USER }}    
+#       #     SSH_IP: ${{ secrets.SSH_IP }}
+#       #     # COMMIT_ID: ${{ env.COMMIT_ID }}
+#       #   run: |
+#       #     echo "$SSH_KEY" > kartik-new.pem
+#       #     sudo chmod 400 kartik-new.pem
+#       #     ssh -o StrictHostKeyChecking=no -i kartik-new.pem $SSH_USER@$SSH_IP << 'EOF'
+#       #       sudo yum update
+#       #       sudo yum upgrade -y
+#       #       sudo yum install docker -y || true
+#       #       sudo systemctl enable docker || true
+#       #       sudo systemctl start docker || true
+#       #       sudo usermod -aG docker ubuntu || true
+#       #       sudo docker network create kartik-network || true
+#       #       sudo docker stop backend || true
+#       #       sudo docker rm backend || true
+#       #       sudo docker stop frontend || true
+#       #       sudo docker rm frontend || true
+#       #       sudo docker rmi ${{ secrets.ECR_REPO_backend }}:latest || true
+#       #       sudo docker rmi ${{ secrets.ECR_REPO_frontend }}:latest || true
+#       #       # sudo docker stop mysql-container || true
+#       #       # sudo docker rm mysql-container || true
+#       #       sudo docker run -d --name mysql-container --network kartik-network --restart always -e MYSQL_ROOT_PASSWORD=password -e MYSQL_DATABASE=kartikdatabase  -e MYSQL_USER=kartikuser -e MYSQL_PASSWORD=password -p 3300:3306 mysql:latest || true
+#       #       aws ecr get-login-password --region us-east-1 | sudo docker login --username AWS --password-stdin $ECR_PASSWORD 
+#       #       sudo docker pull ${{ secrets.ECR_REPO_backend }}:latest
+#       #       sudo docker pull ${{ secrets.ECR_REPO_frontend }}:latest
+#       #       sudo docker run --name=backend --network kartik-network --restart always -p 5000:5000 -e DB_HOST=mysql-container -e DB_PASSWORD=password -e DB_NAME=kartikdatabase  -e DB_USER=kartikuser -d ${{ secrets.ECR_REPO_backend }}:latest
+#       #       sudo docker run --name=frontend --restart always -p 3000:80 -d ${{ secrets.ECR_REPO_frontend }}:latest
             
-      #       # if we want to send your container logs to cloudwatch then we can use this flag called --log -driver 
-      #       # sudo docker run -d   --name backend   --log-driver=awslogs   --log-opt awslogs-region=us-east-1   --log-opt awslogs-group=/myapp/backend   --log-opt awslogs-create-group=true -e DB_HOST=mysql-container -e DB_PASSWORD=password -e DB_NAME=kartikdatabase  -e DB_USER=kartikuser -p 5000:5000 --network kartik-network 364700382033.dkr.ecr.us-east-1.amazonaws.com/backend-repo:latest
+#       #       # if we want to send your container logs to cloudwatch then we can use this flag called --log -driver 
+#       #       # sudo docker run -d   --name backend   --log-driver=awslogs   --log-opt awslogs-region=us-east-1   --log-opt awslogs-group=/myapp/backend   --log-opt awslogs-create-group=true -e DB_HOST=mysql-container -e DB_PASSWORD=password -e DB_NAME=kartikdatabase  -e DB_USER=kartikuser -p 5000:5000 --network kartik-network 364700382033.dkr.ecr.us-east-1.amazonaws.com/backend-repo:latest
             
-      #       sudo docker ps
-      #     EOF
-# # Update main.yml · kartikeyametikoti/cicd-fullstack@237470a
+#       #       sudo docker ps
+#       #     EOF
+# # # Update main.yml · kartikeyametikoti/cicd-fullstack@237470a
