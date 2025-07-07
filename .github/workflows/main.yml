@@ -49,8 +49,8 @@ jobs:
       run: |
         gcloud config set project ${{ secrets.GCP_PROJECT_ID }}
         docker pull mysql:8
-        docker tag mysql:8 gcr.io/${{ secrets.GCP_PROJECT_ID }}/mysql:8
-        docker push gcr.io/${{ secrets.GCP_PROJECT_ID }}/mysql:8
+        docker tag mysql:8 us-central1-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/mysql/mysql:8
+        docker push us-central1-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/mysql/mysql:8
         
     - name: Build Backend Docker Image
       run: docker build -t $BACKEND_IMAGE ./backend
