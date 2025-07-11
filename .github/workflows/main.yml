@@ -52,8 +52,8 @@ jobs:
 
       - name: Pull, Tag, and Push MySQL Image
         run: |
-          docker pull mysql:8
-          docker tag mysql:8 $MYSQL_IMAGE
+          docker pull mysql:latest
+          docker tag mysql:latest $MYSQL_IMAGE
           docker push $MYSQL_IMAGE
 
       - name: Build Backend Docker Image
