@@ -1,24 +1,29 @@
-name: Build and push docker ima ge to Artifact Registry
+name: Build and push docker images to Artifact Registry
 
 on:
   push:
     branches:
       - main
+
 jobs:
   build-and-push:
     name: Build, Push, and Test with MySQL
     runs-on: self-hosted
+    env:
+      PROJECT_ID: ${{ secrets.GCP_PROJECT_ID }}
+      REPO_NAME: myrepo
+      BACKEND_IMAGE: asia-south1-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/myrepo/backend-app
+      FRONTEND_IMAGE: asia-south1-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/myrepo/frontend-app
+      MYSQL_IMAGE: asia-south1-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/myrepo/mysql:8.0
 
     services:
       mysql:
-        image: mysql:8
+        image: mysql:8.0
         env:
           MYSQL_ROOT_PASSWORD: rootpassword
           MYSQL_DATABASE: cruddb
           MYSQL_USER: admin
           MYSQL_PASSWORD: admin
-        ports:
-          - 3306:3306
         options: >-
           --health-cmd="mysqladmin ping --silent"
           --health-interval=10s
@@ -32,28 +37,30 @@ jobs:
       - name: Authenticate to Google Cloud
         uses: google-github-actions/auth@v2
         with:
-            credentials_json: '${{ secrets.GCP_SA_KEY }}'
+          credentials_json: '${{ secrets.GCP_SA_KEY }}'
 
       - name: Configure Docker to use Artifact Registry
-        run: |
-          gcloud auth configure-docker asia-south1-docker.pkg.dev
+        run: gcloud auth configure-docker asia-south1-docker.pkg.dev
 
       - name: Who am I?
         run: gcloud auth list
-
-      - name: Set environment variables
-        run: |
-          echo "PROJECT_ID=${{ secrets.GCP_PROJECT_ID }}" >> $GITHUB_ENV
-          echo "REPO_NAME=myrepo" >> $GITHUB_ENV
-          echo "BACKEND_IMAGE=asia-south1-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/myrepo/backend-app" >> $GITHUB_ENV
-          echo "FRONTEND_IMAGE=asia-south1-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/myrepo/frontend-app" >> $GITHUB_ENV
-          echo "MYSQL_IMAGE=asia-south1-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/myrepo/mysql:8" >> $GITHUB_ENV
 
       - name: Pull, Tag, and Push MySQL Image
         run: |
           docker pull mysql:8
           docker tag mysql:8 $MYSQL_IMAGE
           docker push $MYSQL_IMAGE
+
+      - name: Wait for MySQL to be ready
+        run: |
+          for i in {1..30}; do
+            if mysqladmin ping -h mysql --silent; then
+              echo "MySQL is ready"
+              break
+            fi
+            echo "Waiting for MySQL..."
+            sleep 2
+          done
 
       - name: Build Backend Docker Image
         run: docker build -t $BACKEND_IMAGE ./backend
@@ -66,6 +73,7 @@ jobs:
 
       - name: Push Frontend Image
         run: docker push $FRONTEND_IMAGE
+
 
 
  
