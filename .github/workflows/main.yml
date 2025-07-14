@@ -11,7 +11,7 @@ jobs:
 
     services:
       mysql:
-        image: mysql:latest
+        image: mysql:8
         env:
           MYSQL_ROOT_PASSWORD: rootpassword
           MYSQL_DATABASE: cruddb
@@ -47,12 +47,12 @@ jobs:
           echo "REPO_NAME=myrepo" >> $GITHUB_ENV
           echo "BACKEND_IMAGE=asia-south1-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/myrepo/backend-app" >> $GITHUB_ENV
           echo "FRONTEND_IMAGE=asia-south1-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/myrepo/frontend-app" >> $GITHUB_ENV
-          echo "MYSQL_IMAGE=asia-south1-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/myrepo/mysql:latest" >> $GITHUB_ENV
+          echo "MYSQL_IMAGE=asia-south1-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/myrepo/mysql:8" >> $GITHUB_ENV
 
       - name: Pull, Tag, and Push MySQL Image
         run: |
-          docker pull mysql:latest
-          docker tag mysql:latest $MYSQL_IMAGE
+          docker pull mysql:8
+          docker tag mysql:8 $MYSQL_IMAGE
           docker push $MYSQL_IMAGE
 
       - name: Build Backend Docker Image
