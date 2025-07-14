@@ -75,6 +75,21 @@ jobs:
         run: docker push $FRONTEND_IMAGE
 
 
+      - name: Authenticate to GKE
+        run: |
+          gcloud container clusters get-credentials "$CLUSTER_NAME" --zone "$CLUSTER_ZONE" --project "$PROJECT_ID"
+
+      - name: Deploy backend to GKE
+        run: |
+          kubectl apply -f backend/backend_deploy.yaml
+          kubectl apply -f backend/backend_service.yaml
+
+      - name: Deploy frontend to GKE
+        run: |
+          kubectl apply -f frontend/frontend_deploy.yaml
+          kubectl apply -f frontend/frontend_service.yaml
+
+
 
  
 
