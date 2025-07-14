@@ -16,19 +16,19 @@ jobs:
       FRONTEND_IMAGE: asia-south1-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/myrepo/frontend-app
       MYSQL_IMAGE: asia-south1-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/myrepo/mysql:8.0
 
-    # services:
-    #   mysql:
-    #     image: mysql:8.0
-    #     env:
-    #       MYSQL_ROOT_PASSWORD: rootpassword
-    #       MYSQL_DATABASE: cruddb
-    #       MYSQL_USER: admin
-    #       MYSQL_PASSWORD: admin
-    #     options: >-
-    #       --health-cmd="mysqladmin ping --silent"
-    #       --health-interval=10s
-    #       --health-timeout=5s
-    #       --health-retries=5
+    services:
+      mysql:
+        image: mysql:8.0
+        env:
+          MYSQL_ROOT_PASSWORD: rootpassword
+          MYSQL_DATABASE: cruddb
+          MYSQL_USER: admin
+          MYSQL_PASSWORD: admin
+        options: >-
+          --health-cmd="mysqladmin ping --silent"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=5
 
     steps:
       - name: Checkout code
