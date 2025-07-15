@@ -74,10 +74,15 @@ jobs:
       - name: Push Frontend Image
         run: docker push $FRONTEND_IMAGE
 
+      - name: installing kubectl
+        run: |
+          gcloud components install kubectl
+          kubectl version
+
 
       - name: Authenticate to GKE
         run: |
-          gcloud container clusters get-credentials "privatecluster" --zone "asia-south1" --project "$PROJECT_ID"
+          gcloud container clusters get-credentials privatecluster --region asia-south1 --project "$PROJECT_ID"
 
       - name: Deploy backend to GKE
         run: |
