@@ -76,14 +76,10 @@ jobs:
 
       - name: installing kubectl
         run: |
-          sudo apt-get install kubectl
+          sudo apt install kubectl
           kubectl version
-
-
       - name: Authenticate to GKE
-        run: |
-          gcloud container clusters get-credentials privatecluster --region asia-south1 --project "$PROJECT_ID"
-
+        run: gcloud container clusters get-credentials privatecluster --region asia-south1 --project "$PROJECT_ID"
       - name: Deploy backend to GKE
         run: |
           kubectl apply -f backend/backend_deploy.yaml
