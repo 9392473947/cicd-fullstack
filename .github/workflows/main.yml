@@ -76,7 +76,7 @@ jobs:
 
       - name: installing kubectl
         run: |
-          gcloud components install kubectl
+          sudo apt-get install kubectl
           kubectl version
 
 
