@@ -78,13 +78,13 @@ jobs:
         run: docker push $FRONTEND_IMAGE
       - name: Authenticate to GKE
         run: |
-          gcloud components install gke-gcloud-auth-plugin
+          # gcloud components install gke-gcloud-auth-plugin
           gcloud container clusters get-credentials privatecluster --region asia-south1 --project "$PROJECT_ID"
 
-      - name: verifying kubectl
-        run: |
-          kubectl version
-          kubectl get nodes
+      # - name: verifying kubectl
+      #   run: |
+      #     kubectl version
+      #     kubectl get nodes
         
       - name: Deploy backend to GKE
         run: |
