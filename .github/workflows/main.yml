@@ -13,7 +13,7 @@ jobs:
       PROJECT_ID: ${{ secrets.GCP_PROJECT_ID }}
       REPO_NAME: myrepo
       BACKEND_IMAGE: asia-south1-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/myrepo/backend-app
-      FRONTEND_IMAGE: asia-south1-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/myrepo/frontend-app
+      FRONTEND_IMAGE: asia-south1-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/myrepo/frontend-app:latest
       MYSQL_IMAGE: asia-south1-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/myrepo/mysql:8.0
 
     services:
@@ -72,7 +72,7 @@ jobs:
         run: docker push $BACKEND_IMAGE
 
       - name: Build Frontend Docker Image
-        run: docker build -t $FRONTEND_IMAGE ./frontend
+        run: docker build --build-arg BACKEND_URL=http://34.93.109.102:5000/api -t $FRONTEND_IMAGE ./frontend
 
       - name: Push Frontend Image
         run: docker push $FRONTEND_IMAGE
